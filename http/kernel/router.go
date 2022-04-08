@@ -14,13 +14,13 @@ import (
 // fixme: move this to kernel
 var default_not_found_handler = notFoundMethod
 
-func NewRouter() *RouteTree {
+func NewRouteTree() *RouteTree {
 	return &RouteTree{
 		metadata:        make(map[string]map[string]*Handler),
 		once:            &sync.Once{},
 		notFoundHandler: default_not_found_handler,
 		RouteNode: &RouteNode{
-			children: &collection.LinkedList{},
+			children: &collection.LinkedList[*RouteNode]{},
 			root:     true,
 			leaf:     false,
 		},

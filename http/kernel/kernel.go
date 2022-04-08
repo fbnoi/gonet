@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"fbnoi.com/goutil/collection"
-
 	"net/http"
 	"sync/atomic"
 
@@ -27,16 +25,8 @@ var (
 
 func DefaultServer() (k *Kernel) {
 	k = &Kernel{
-		RouteTree: &RouteTree{
-			metadata: make(map[string]map[string]*Handler),
-			once:     &sync.Once{},
-			RouteNode: &RouteNode{
-				children: &collection.LinkedList{},
-				root:     true,
-				leaf:     false,
-			},
-		},
-		server: &atomic.Value{},
+		RouteTree: NewRouteTree(),
+		server:    &atomic.Value{},
 		conf: &KernelConfig{
 			Timeout:           defaultTimeout,
 			ReadTimeout:       defaultReadTimeout,

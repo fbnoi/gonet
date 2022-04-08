@@ -10,7 +10,7 @@ import (
 
 type RouteNode struct {
 	parent   *RouteNode
-	children *collection.LinkedList
+	children *collection.LinkedList[*RouteNode]
 
 	root bool
 	leaf bool
@@ -31,7 +31,7 @@ func (routeNode *RouteNode) search(path string, params func() *Params) (*RouteNo
 	//find in this entry's children list. if there is no match in current list, go upper to
 	//find another entry and so on. if no match at all, notfound.
 	l := strings.Split(path, "/")
-	p := make([]collection.Iterator, len(l))
+	p := make([]collection.Iterator[*RouteNode], len(l))
 	k := routeNode
 	var ps *Params
 	// beautyPath always start with '/' and the begin of the path must be "".
@@ -42,7 +42,7 @@ func (routeNode *RouteNode) search(path string, params func() *Params) (*RouteNo
 	for at >= 1 && at < len(l) {
 		find := false
 		for it.HasNext() {
-			child := it.Next().(*RouteNode)
+			child := it.Next()
 
 			// if find fit node
 			if child.fit(l[at]) {
@@ -94,7 +94,7 @@ func (routeNode *RouteNode) addPath(method, path string, handler *Handler) *Rout
 
 	it := node.parent.children.GetIterator()
 	for it.HasNext() {
-		sbling := it.Next().(*RouteNode)
+		sbling := it.Next()
 		if node != sbling && sbling.leaf && sbling.wildcard {
 			panic(fmt.Sprintf("route [%s] conflict with [%s]", path, sbling.fullPath))
 		}
@@ -120,7 +120,7 @@ func (routeNode *RouteNode) pave(path string) *RouteNode {
 		it := currentnode.children.GetIterator()
 		pathcut, _, wildcard := resolvePathNode(l[i])
 		for it.HasNext() {
-			node := it.Next().(*RouteNode)
+			node := it.Next()
 			if pathcut == node.path && wildcard == node.wildcard {
 				matched = true
 				if i >= len-1 {
@@ -145,7 +145,7 @@ func (routeNode *RouteNode) pave(path string) *RouteNode {
 func (routeNode *RouteNode) addChildNode(path string) *RouteNode {
 	node := &RouteNode{
 		root:     false,
-		children: &collection.LinkedList{},
+		children: &collection.LinkedList[*RouteNode]{},
 		parent:   routeNode,
 	}
 	node.path, node.pattern, node.wildcard = resolvePathNode(path)
