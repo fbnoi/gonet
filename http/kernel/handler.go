@@ -68,8 +68,7 @@ func (r *Handler) GetEndpoint() HandlerFunc {
 }
 
 func (r *Handler) handle(ctx *Context) {
-	handlefunc := r.nextHandleFunc(ctx)
-	handlefunc(ctx)
+	r.nextHandleFunc(ctx)(ctx)
 }
 
 func (r *Handler) nextHandleFunc(ctx *Context) HandlerFunc {

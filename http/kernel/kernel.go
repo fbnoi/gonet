@@ -32,6 +32,7 @@ func DefaultServer() (k *Kernel) {
 			ReadTimeout:       defaultReadTimeout,
 			WriteTimeout:      defaultWriteTimeout,
 			RedirectFixedPath: true,
+			CookieConfig:      defaultCookieConfig,
 		},
 		notFound: defaultNotFoundHandler,
 	}
@@ -69,6 +70,7 @@ func (kernel *Kernel) contextFromHttp(r *http.Request, w http.ResponseWriter) *C
 		Request: r,
 		Writer:  w,
 		Store:   make(map[string]any),
+		kernel:  kernel,
 	}
 }
 

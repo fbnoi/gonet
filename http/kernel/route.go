@@ -15,10 +15,11 @@ type RouteNode struct {
 	root bool
 	leaf bool
 
-	path     string
-	fullPath string
-	pattern  string
-	wildcard bool
+	path       string
+	fullPath   string
+	pattern    *regexp.Regexp
+	rawPattern string
+	wildcard   bool
 
 	handler map[string]*Handler
 }
@@ -95,8 +96,18 @@ func (routeNode *RouteNode) addPath(method, path string, handler *Handler) *Rout
 	it := node.parent.children.GetIterator()
 	for it.HasNext() {
 		sbling := it.Next()
-		if node != sbling && sbling.leaf && sbling.wildcard {
-			panic(fmt.Sprintf("route [%s] conflict with [%s]", path, sbling.fullPath))
+		if node != sbling && sbling.leaf {
+			conflict := fmt.Sprintf("route [%s] conflict with [%s]", path, sbling.fullPath)
+			if sbling.wildcard != node.wildcard {
+				switch {
+				case sbling.wildcard && sbling.pattern != nil && sbling.pattern.MatchString(node.path):
+					panic(conflict)
+				case node.wildcard && node.pattern != nil && node.pattern.MatchString(sbling.path):
+					panic(conflict)
+				}
+			} else if sbling.wildcard {
+				panic(conflict)
+			}
 		}
 	}
 	node.setHandlers(method, handler)
@@ -118,10 +129,10 @@ func (routeNode *RouteNode) pave(path string) *RouteNode {
 	for i = 0; i < len; i++ {
 		matched := false
 		it := currentnode.children.GetIterator()
-		pathcut, _, wildcard := resolvePathNode(l[i])
+		pathNode := resolvePathSplit2Node(l[i])
 		for it.HasNext() {
 			node := it.Next()
-			if pathcut == node.path && wildcard == node.wildcard {
+			if pathNode.path == node.path && pathNode.wildcard == node.wildcard {
 				matched = true
 				if i >= len-1 {
 					return node
@@ -143,12 +154,9 @@ func (routeNode *RouteNode) pave(path string) *RouteNode {
 // addChildNode add a node to child list
 // if th path is wildcard, add to end, else add to begining.
 func (routeNode *RouteNode) addChildNode(path string) *RouteNode {
-	node := &RouteNode{
-		root:     false,
-		children: &collection.LinkedList[*RouteNode]{},
-		parent:   routeNode,
-	}
-	node.path, node.pattern, node.wildcard = resolvePathNode(path)
+	node := resolvePathSplit2Node(path)
+	node.root, node.children, node.parent = false, &collection.LinkedList[*RouteNode]{}, routeNode
+
 	var fullPath string
 	if node.wildcard {
 		fullPath = fmt.Sprintf("%s/:%s", routeNode.fullPath, path)
@@ -168,9 +176,8 @@ func (routeNode *RouteNode) addChildNode(path string) *RouteNode {
 // else return false
 func (routeNode *RouteNode) fit(path string) bool {
 	if routeNode.wildcard {
-		if routeNode.pattern != "" {
-			fit, _ := regexp.MatchString(routeNode.pattern, path)
-			return fit
+		if routeNode.pattern != nil {
+			return routeNode.pattern.MatchString(path)
 		}
 		return true
 	}
@@ -205,19 +212,28 @@ func (routeNode *RouteNode) setHandlers(method string, handler *Handler) *RouteN
 // return (name, nil, false), if it is a wildcard, return (name, nil, true),
 // if it is a wildcard with a pattern, return (name, pattern, true), if the pattern
 // compiled failed, panic
-func resolvePathNode(pathnode string) (string, string, bool) {
-	if !strings.HasPrefix(pathnode, ":") {
-		return pathnode, "", false
+func resolvePathSplit2Node(pathSplit string) *RouteNode {
+	node := &RouteNode{}
+	if pathSplit == "" {
+		panic("path split cannot be empty")
 	}
-	pathnode = strings.TrimPrefix(pathnode, ":")
-	if !strings.Contains(pathnode, "(") {
-		return pathnode, "", true
+	if !strings.HasPrefix(pathSplit, ":") {
+		node.path, node.rawPattern, node.wildcard = pathSplit, "", false
+
+		return node
 	}
-	path := pathnode[:strings.Index(pathnode, "(")]
-	rgxStr := pathnode[strings.Index(pathnode, "(")+1 : len(pathnode)-1]
-	_, err := regexp.Compile(rgxStr)
+	pathSplit = strings.TrimPrefix(pathSplit, ":")
+	if !strings.Contains(pathSplit, "(") {
+		node.path, node.rawPattern, node.wildcard = pathSplit, "", true
+
+		return node
+	}
+	path := pathSplit[:strings.Index(pathSplit, "(")]
+	regStr := pathSplit[strings.Index(pathSplit, "(")+1 : len(pathSplit)-1]
+	reg, err := regexp.Compile(regStr)
 	if err != nil {
-		panic(fmt.Sprintf("resolve path node [%s] faild, error: %s", pathnode, err))
+		panic(fmt.Sprintf("resolve path node [%s] faild, error: %s", pathSplit, err))
 	}
-	return path, rgxStr, true
+	node.path, node.rawPattern, node.wildcard, node.pattern = path, regStr, true, reg
+	return node
 }

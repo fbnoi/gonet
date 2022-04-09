@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+var defaultCookieConfig = &CookieConfig{
+	Path:       "/",
+	Domain:     "localhost",
+	Expires:    time.Now().Add(time.Hour * 144),
+	RawExpires: "",
+	MaxAge:     0,
+	Secure:     true,
+	HttpOnly:   true,
+	SameSite:   http.SameSiteLaxMode,
+}
+
 func cookieFromConfig(conf *CookieConfig) *http.Cookie {
 	return &http.Cookie{
 		Path:       conf.Path,

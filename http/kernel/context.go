@@ -19,7 +19,7 @@ const (
 
 type Context struct {
 	context.Context
-	kernel Kernel
+	kernel *Kernel
 
 	Writer  http.ResponseWriter
 	Request *http.Request
