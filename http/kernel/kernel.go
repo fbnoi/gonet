@@ -47,6 +47,8 @@ type KernelConfig struct {
 	// http will redirect to the fixed path if path is dirty.
 	// for example: /foo/ will direct to /foo
 	RedirectFixedPath bool
+
+	CookieConfig *CookieConfig
 }
 
 type Kernel struct {
@@ -61,20 +63,31 @@ type Kernel struct {
 	notFound HandlerFunc
 }
 
-func (kernel *Kernel) SetConfig(conf *KernelConfig) (err error) {
+func (kernel *Kernel) contextFromHttp(r *http.Request, w http.ResponseWriter) *Context {
+	return &Context{
+		callIdx: -1,
+		Request: r,
+		Writer:  w,
+		Store:   make(map[string]any),
+	}
+}
+
+func (kernel *Kernel) SetConfig(conf *KernelConfig) error {
 	if conf.Timeout <= 0 {
 		return errors.New("[error] timeout config must greater than 0")
 	}
 	kernel.lock.Lock()
+	defer kernel.lock.Unlock()
 	kernel.conf = conf
-	kernel.lock.Unlock()
-	return
+
+	return nil
 }
 
 func (kernel *Kernel) GetConfig() *KernelConfig {
 	kernel.lock.RLock()
+	defer kernel.lock.RUnlock()
 	conf := kernel.conf
-	kernel.lock.RUnlock()
+
 	return conf
 }
 

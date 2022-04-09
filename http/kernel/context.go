@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"fbnoi.com/gonet/http/kernel/render"
+	"fbnoi.com/gonet/http/render"
 )
 
 type D map[string]any
@@ -19,6 +19,7 @@ const (
 
 type Context struct {
 	context.Context
+	kernel Kernel
 
 	Writer  http.ResponseWriter
 	Request *http.Request
@@ -51,6 +52,25 @@ func (c *Context) Set(name string, value any) {
 		c.Store = make(map[string]any)
 	}
 	c.Store[name] = value
+}
+
+func (c *Context) Cookie(name string) *http.Cookie {
+	if cookie, err := c.Request.Cookie(name); err == nil {
+		return cookie
+	}
+	return nil
+}
+
+func (c *Context) Cookies() []*http.Cookie {
+	return c.Request.Cookies()
+}
+
+func (c *Context) SetCookie(name, value string) {
+	if name != "" && value != "" {
+		cookie := cookieFromConfig(c.kernel.GetConfig().CookieConfig)
+		cookie.Name, cookie.Value = name, value
+		http.SetCookie(c.Writer, cookie)
+	}
 }
 
 func (c *Context) setContentType(typ string) {

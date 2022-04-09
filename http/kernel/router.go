@@ -40,8 +40,8 @@ const (
 )
 
 var allowed_methods = []string{
-	METHOD_GET, METHOD_POST, METHOD_HEAD, METHOD_PUT, METHOD_PATCH,
-	METHOD_DELETE, METHOD_CONNECT, METHOD_OPTIONS, METHOD_TRACE,
+	METHOD_GET, METHOD_POST, METHOD_HEAD,
+	METHOD_PUT, METHOD_PATCH, METHOD_DELETE,
 }
 
 // IRouter http router interface.
@@ -78,29 +78,27 @@ func (rt *RouteTree) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	fixedPath := cleanPath(path)
 	r.URL.Path = fixedPath
+
+	ctx := rt.kernel.contextFromHttp(r, w)
+
 	conf := rt.kernel.GetConfig()
 
 	// if path is dirty, redirect
 	if path != fixedPath && conf.RedirectFixedPath {
-		http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
+		ctx.Redirect(http.StatusTemporaryRedirect, r.URL.String())
+
 		return
 	}
 
 	// if path endup with '/', redirect
 	if len(fixedPath) > 1 && strings.HasSuffix(fixedPath, "/") {
 		r.URL.Path = strings.TrimRight(fixedPath, "/")
-		http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
+		ctx.Redirect(http.StatusTemporaryRedirect, r.URL.String())
+
 		return
 	}
 	node, params := rt.kernel.RouteTree.lookUp(path)
 	defer rt.putParams(&params)
-
-	ctx := &Context{
-		callIdx:     -1,
-		Request:     r,
-		Writer:      w,
-		routeParams: params,
-	}
 
 	// not found
 	if node == nil {
@@ -111,7 +109,10 @@ func (rt *RouteTree) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler, ok := node.getHandlers(r.Method)
 	if !ok {
 		rt.kernel.notFound(ctx)
+		return
 	}
+
+	ctx.routeParams = params
 
 	tm := conf.Timeout
 	hcon := handler.GetConfig()
@@ -119,9 +120,9 @@ func (rt *RouteTree) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tm = hcon.Timeout
 	}
 
-	// var cancel func()
-	ctx.Context, _ = context.WithTimeout(context.Background(), tm)
-	// defer cancel()
+	var cancel func()
+	ctx.Context, cancel = context.WithTimeout(context.Background(), tm)
+	defer cancel()
 
 	handler.handle(ctx)
 }
