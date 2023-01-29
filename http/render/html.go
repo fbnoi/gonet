@@ -9,13 +9,13 @@ import (
 const CONTENT_TYPE_HTML = "text/html; charset=utf-8"
 
 type HTML struct {
-	viewPath string
+	ViewPath string
 	Params   template.Params
 }
 
 func (h HTML) Render(w http.ResponseWriter) (err error) {
 	writeHeader(w, CONTENT_TYPE_HTML)
-	err = template.Render(h.viewPath, w, h.Params)
+	err = template.Render(h.ViewPath, w, h.Params)
 
 	return
 }

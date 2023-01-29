@@ -25,7 +25,7 @@ type Context struct {
 
 func (ctx *Context) HTML(path string, ps template.Params, code int) {
 	writeStatus(ctx.ResponseWriter, code)
-	h := render.HTML{}
+	h := render.HTML{ViewPath: path, Params: ps}
 	ctx.Error = h.Render(ctx.ResponseWriter)
 }
 
