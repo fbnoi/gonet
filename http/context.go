@@ -21,6 +21,8 @@ type Context struct {
 	RouteParams    httprouter.Params
 
 	Error error
+
+	store map[string]any
 }
 
 func (ctx *Context) HTML(path string, ps template.Params, code int) {
@@ -98,30 +100,30 @@ func (ctx *Context) PostSlice(name, sep string) []string {
 	return strings.Split(i, sep)
 }
 
-func (ctx *Context) Get(name string) string {
+func (ctx *Context) GetQuery(name string) string {
 	return ctx.Request.URL.Query().Get(name)
 }
 
 func (ctx *Context) GetInt(name string) (int, error) {
-	i := ctx.Get(name)
+	i := ctx.GetQuery(name)
 
 	return strconv.Atoi(i)
 }
 
 func (ctx *Context) GetBool(name string) (bool, error) {
-	i := ctx.Get(name)
+	i := ctx.GetQuery(name)
 
 	return strconv.ParseBool(i)
 }
 
 func (ctx *Context) GetFloat(name string) (float64, error) {
-	i := ctx.Get(name)
+	i := ctx.GetQuery(name)
 
 	return strconv.ParseFloat(i, 64)
 }
 
 func (ctx *Context) GetSlice(name, sep string) []string {
-	i := ctx.Get(name)
+	i := ctx.GetQuery(name)
 
 	return strings.Split(i, sep)
 }
@@ -134,6 +136,16 @@ func (ctx *Context) Bind(obj any) error {
 
 func (ctx *Context) BindWith(obj any, b binding.BindingInterface) error {
 	return b.Bind(ctx.Request, obj)
+}
+
+func (ctx *Context) Set(key string, value any) {
+	ctx.store[key] = value
+}
+
+func (ctx *Context) Get(key string) (val any, ok bool) {
+	val, ok = ctx.store[key]
+
+	return
 }
 
 func writeStatus(w http.ResponseWriter, code int) {
